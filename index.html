@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wer hat's gemacht?</title>
+  <meta name="theme-color" content="#F6F1E9" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Haushalt" />
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+      background: #F6F1E9;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+    .container { max-width: 480px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 20px; }
+    h1 { font-size: 28px; font-weight: 700; color: #2B2620; letter-spacing: -0.01em; }
+    .subtitle { font-size: 14px; color: #8A8076; margin-top: 6px; font-family: -apple-system, sans-serif; }
+    .tab-bar {
+      display: flex; gap: 8px; margin-bottom: 16px;
+      background: #EDE6D9; border-radius: 12px; padding: 4px;
+    }
+    .tab {
+      flex: 1; padding: 10px 0; border: none; background: transparent;
+      border-radius: 9px; font-size: 15px; font-family: -apple-system, sans-serif;
+      font-weight: 600; color: #8A8076; cursor: pointer;
+    }
+    .tab.active {
+      background: #fff; color: #2B2620;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .view { display: none; }
+    .view.active { display: block; }
+    .person-block {
+      background: #fff; border-radius: 16px; padding: 16px;
+      box-shadow: 0 1px 4px rgba(43,38,32,0.06); margin-bottom: 20px;
+    }
+    .person-header {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+    }
+    .person-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .person-name { font-size: 17px; font-weight: 700; color: #2B2620; flex: 1; }
+    .undo-btn {
+      border: none; background: transparent; color: #8A8076;
+      font-size: 12px; font-family: -apple-system, sans-serif; cursor: pointer; padding: 4px 6px;
+    }
+    .task-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .task-btn {
+      display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+      border-radius: 10px; border: 1.5px solid; font-size: 14px;
+      font-family: -apple-system, sans-serif; font-weight: 500;
+      cursor: pointer; background: #fff; color: #2B2620;
+      transition: transform 0.15s, background 0.15s, color 0.15s;
+      text-align: left;
+    }
+    .task-btn.flash { transform: scale(0.96); }
+    .task-icon { font-size: 16px; }
+    .hint {
+      text-align: center; font-size: 13px; color: #8A8076;
+      font-family: -apple-system, sans-serif; margin-top: 4px;
+    }
+    .loading {
+      text-align: center; padding: 40px; color: #8A8076;
+      font-family: -apple-system, sans-serif;
+    }
+    /* Summary */
+    .week-label {
+      font-size: 16px; font-weight: 700; color: #2B2620;
+      text-align: center; margin-bottom: 16px;
+    }
+    .big-split {
+      display: flex; justify-content: space-around;
+      background: #fff; border-radius: 16px; padding: 20px 16px; margin-bottom: 12px;
+    }
+    .split-col { text-align: center; }
+    .split-num { font-size: 36px; font-weight: 700; color: #2B2620; line-height: 1; }
+    .split-label { font-size: 14px; font-weight: 700; margin-top: 4px; font-family: -apple-system, sans-serif; }
+    .split-pct { font-size: 12px; color: #8A8076; font-family: -apple-system, sans-serif; }
+    .bar-outer {
+      display: flex; height: 10px; border-radius: 5px;
+      overflow: hidden; background: #EDE6D9; margin-bottom: 20px;
+    }
+    .bar-segment { height: 100%; }
+    .section-title {
+      font-size: 14px; font-weight: 700; color: #8A8076;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin-bottom: 10px; font-family: -apple-system, sans-serif;
+    }
+    .day-chart {
+      display: flex; justify-content: space-between;
+      background: #fff; border-radius: 16px;
+      padding: 16px 12px 12px; gap: 6px; margin-bottom: 20px;
+    }
+    .day-col { flex: 1; display: flex; flex-direction: column; align-items: center; }
+    .day-bars { display: flex; align-items: flex-end; height: 80px; width: 100%; gap: 2px; justify-content: center; }
+    .day-bar { width: 8px; border-radius: 3px; min-height: 2px; }
+    .day-label { font-size: 11px; color: #8A8076; margin-top: 6px; font-family: -apple-system, sans-serif; }
+    .day-total { font-size: 11px; font-weight: 700; color: #2B2620; font-family: -apple-system, sans-serif; min-height: 14px; }
+    .task-list { background: #fff; border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+    .task-row { margin-bottom: 12px; }
+    .task-row:last-child { margin-bottom: 0; }
+    .task-row-label { display: flex; gap: 8px; font-size: 13px; font-family: -apple-system, sans-serif; color: #2B2620; font-weight: 500; margin-bottom: 6px; }
+    .task-row-bar { display: flex; height: 22px; border-radius: 6px; overflow: hidden; background: #EDE6D9; }
+    .task-row-segment { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 700; font-family: -apple-system, sans-serif; }
+    .empty { text-align: center; padding: 32px 16px; color: #8A8076; font-family: -apple-system, sans-serif; font-size: 14px; background: #fff; border-radius: 16px; }
+    .note { text-align: center; font-size: 12px; color: #A8A096; font-family: -apple-system, sans-serif; margin-top: 8px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Wer hat's gemacht?</h1>
+    <p class="subtitle">Ein Tipp, fertig. Keine Tabelle nötig.</p>
+  </header>
+
+  <div class="tab-bar">
+    <button class="tab active" onclick="showView('log')">Erfassen</button>
+    <button class="tab" onclick="showView('summary')">Übersicht</button>
+  </div>
+
+  <div id="view-log" class="view active">
+    <div id="log-content"><div class="loading">Lädt…</div></div>
+    <p class="hint" id="hint-total"></p>
+  </div>
+
+  <div id="view-summary" class="view">
+    <div id="summary-content"><div class="loading">Lädt…</div></div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBnqPuET5pEdF-O49bY819UlgV1EyAxJ-w",
+  authDomain: "haushalt-tracker.firebaseapp.com",
+  projectId: "haushalt-tracker",
+  storageBucket: "haushalt-tracker.firebasestorage.app",
+  messagingSenderId: "538868309326",
+  appId: "1:538868309326:web:1fb8bc8a713191d07f921f"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const TASKS = [
+  { id: 'kita_bringen', label: 'Kita bringen', icon: '🚗' },
+  { id: 'kita_holen', label: 'Kita holen', icon: '🏃' },
+  { id: 'einkaufen', label: 'Einkaufen', icon: '🛒' },
+  { id: 'kochen', label: 'Kochen', icon: '🍳' },
+  { id: 'kindfruehstueck', label: 'Kinderfrühstück machen', icon: '🥣' },
+  { id: 'staubsaugen', label: 'Staubsaugen', icon: '🧹' },
+  { id: 'abwasch', label: 'Abwasch / Küche', icon: '🍽️' },
+  { id: 'spuelmaschine', label: 'Spülmaschine', icon: '🫧' },
+  { id: 'kueche_wischen', label: 'Küche wischen', icon: '🧽' },
+  { id: 'bad_putzen', label: 'Bad putzen', icon: '🚿' },
+  { id: 'aufraumen', label: 'Aufräumen', icon: '📦' },
+  { id: 'waesche_auf', label: 'Wäsche aufhängen', icon: '🧺' },
+  { id: 'waesche_ab', label: 'Wäsche abhängen', icon: '👕' },
+  { id: 'muell', label: 'Müll raus', icon: '🗑️' },
+  { id: 'emilia_bett', label: 'Emilia ins Bett', icon: '🌙' },
+  { id: 'nova_bett', label: 'Nova ins Bett', icon: '🌙' },
+  { id: 'gartenarbeit', label: 'Gartenarbeit', icon: '🌿' },
+  { id: 'invisible_work', label: 'Invisible Work', icon: '🧠' },
+  { id: 'handwerken', label: 'Handwerken', icon: '🔧' },
+  { id: 'sonstiges', label: 'Sonstiges', icon: '✏️' },
+];
+
+const PEOPLE = [
+  { id: 'jenny', label: 'Jenny', color: '#B5604A' },
+  { id: 'tom', label: 'Tom', color: '#3D5A52' },
+];
+
+let entries = [];
+
+async function loadEntries() {
+  try {
+    const ref = doc(db, 'haushalt', 'entries');
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      entries = snap.data().list || [];
+    }
+  } catch(e) {
+    console.error('Laden fehlgeschlagen', e);
+  }
+  renderLog();
+  renderSummary();
+}
+
+async function saveEntries() {
+  try {
+    const ref = doc(db, 'haushalt', 'entries');
+    await setDoc(ref, { list: entries });
+  } catch(e) {
+    console.error('Speichern fehlgeschlagen', e);
+  }
+}
+
+function startOfWeek(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = (day === 0 ? -6 : 1) - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0,0,0,0);
+  return d;
+}
+
+function formatDayShort(d) {
+  return d.toLocaleDateString('de-DE', { weekday: 'short' });
+}
+
+function weekEntries() {
+  const ws = startOfWeek(new Date());
+  const we = new Date(ws); we.setDate(we.getDate() + 7);
+  return entries.filter(e => { const t = new Date(e.ts); return t >= ws && t < we; });
+}
+
+async function logEntry(personId, taskId, btnEl, personColor) {
+  const entry = { person: personId, task: taskId, ts: new Date().toISOString() };
+  entries.push(entry);
+  btnEl.style.background = personColor;
+  btnEl.style.color = '#fff';
+  btnEl.style.transform = 'scale(0.96)';
+  setTimeout(() => {
+    btnEl.style.background = '#fff';
+    btnEl.style.color = '#2B2620';
+    btnEl.style.transform = 'scale(1)';
+  }, 700);
+  updateHint();
+  await saveEntries();
+  renderSummary();
+}
+
+async function undoLast(personId) {
+  const idx = [...entries].map((e,i) => ({...e,i})).reverse().find(e => e.person === personId)?.i;
+  if (idx === undefined) return;
+  entries.splice(idx, 1);
+  updateHint();
+  await saveEntries();
+  renderSummary();
+}
+
+function updateHint() {
+  const we = weekEntries();
+  const total = we.length;
+  document.getElementById('hint-total').textContent =
+    `Diese Woche bisher: ${total} ${total === 1 ? 'Eintrag' : 'Einträge'}`;
+}
+
+function renderLog() {
+  const container = document.getElementById('log-content');
+  container.innerHTML = '';
+  PEOPLE.forEach(person => {
+    const block = document.createElement('div');
+    block.className = 'person-block';
+    block.innerHTML = `
+      <div class="person-header">
+        <span class="person-dot" style="background:${person.color}"></span>
+        <span class="person-name">${person.label}</span>
+        <button class="undo-btn" id="undo-${person.id}">⟲ rückgängig</button>
+      </div>
+      <div class="task-grid" id="grid-${person.id}"></div>
+    `;
+    container.appendChild(block);
+    block.querySelector(`#undo-${person.id}`).addEventListener('click', () => undoLast(person.id));
+    const grid = block.querySelector(`#grid-${person.id}`);
+    TASKS.forEach(task => {
+      const btn = document.createElement('button');
+      btn.className = 'task-btn';
+      btn.style.borderColor = person.color;
+      btn.innerHTML = `<span class="task-icon">${task.icon}</span><span>${task.label}</span>`;
+      btn.addEventListener('click', () => logEntry(person.id, task.id, btn, person.color));
+      grid.appendChild(btn);
+    });
+  });
+  updateHint();
+}
+
+function renderSummary() {
+  const we = weekEntries();
+  const container = document.getElementById('summary-content');
+  const ws = startOfWeek(new Date());
+
+  if (we.length === 0) {
+    container.innerHTML = `<div class="empty">Noch keine Einträge diese Woche.<br>Tippt unter "Erfassen" einfach mal los.</div>`;
+    return;
+  }
+
+  const totalAll = we.length;
+  const totals = PEOPLE.map(p => ({ ...p, count: we.filter(e => e.person === p.id).length }));
+
+  // Big split
+  const splitHTML = totals.map(p => {
+    const pct = totalAll ? Math.round(p.count / totalAll * 100) : 0;
+    return `<div class="split-col">
+      <div class="split-num">${p.count}</div>
+      <div class="split-label" style="color:${p.color}">${p.label}</div>
+      <div class="split-pct">${pct}%</div>
+    </div>`;
+  }).join('');
+
+  // Bar
+  const barHTML = totals.map(p => {
+    const pct = totalAll ? (p.count / totalAll * 100) : 0;
+    return `<div class="bar-segment" style="width:${pct}%;background:${p.color}"></div>`;
+  }).join('');
+
+  // Days
+  const days = Array.from({length:7}, (_,i) => { const d = new Date(ws); d.setDate(d.getDate()+i); return d; });
+  const dayTotals = days.map(day => PEOPLE.map(p => ({
+    person: p.id,
+    count: we.filter(e => { const t = new Date(e.ts); return t.toDateString() === day.toDateString() && e.person === p.id; }).length
+  })));
+  const maxDay = Math.max(1, ...dayTotals.map(d => d.reduce((s,p) => s+p.count, 0)));
+
+  const dayHTML = days.map((day, i) => {
+    const totalDay = dayTotals[i].reduce((s,p) => s+p.count, 0);
+    const barsHTML = dayTotals[i].map(p => {
+      const person = PEOPLE.find(pp => pp.id === p.person);
+      const h = maxDay ? (p.count / maxDay * 100) : 0;
+      return `<div class="day-bar" style="height:${h}%;background:${person.color}" title="${person.label}: ${p.count}"></div>`;
+    }).join('');
+    return `<div class="day-col">
+      <div class="day-bars">${barsHTML}</div>
+      <div class="day-label">${formatDayShort(day)}</div>
+      <div class="day-total">${totalDay || ''}</div>
+    </div>`;
+  }).join('');
+
+  // Tasks
+  const byTask = TASKS.map(task => {
+    const counts = PEOPLE.map(p => ({ person: p.id, count: we.filter(e => e.task === task.id && e.person === p.id).length }));
+    const total = counts.reduce((s,c) => s+c.count, 0);
+    return { ...task, counts, total };
+  }).filter(t => t.total > 0);
+
+  const taskHTML = byTask.map(task => {
+    const segmentsHTML = task.counts.map(c => {
+      if (!c.count) return '';
+      const person = PEOPLE.find(p => p.id === c.person);
+      const pct = task.total ? (c.count / task.total * 100) : 0;
+      return `<div class="task-row-segment" style="width:${pct}%;background:${person.color}">${c.count}</div>`;
+    }).join('');
+    return `<div class="task-row">
+      <div class="task-row-label"><span>${task.icon}</span><span>${task.label}</span></div>
+      <div class="task-row-bar">${segmentsHTML}</div>
+    </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <p class="week-label">Diese Woche</p>
+    <div class="big-split">${splitHTML}</div>
+    <div class="bar-outer">${barHTML}</div>
+    <p class="section-title">Pro Tag</p>
+    <div class="day-chart">${dayHTML}</div>
+    <p class="section-title">Pro Aufgabe</p>
+    <div class="task-list">${taskHTML}</div>
+    <p class="note">Daten werden geteilt gespeichert – ihr seht beide dieselbe Übersicht.</p>
+  `;
+}
+
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`view-${name}`).classList.add('active');
+  document.querySelectorAll('.tab')[name === 'log' ? 0 : 1].classList.add('active');
+}
+
+window.showView = showView;
+loadEntries();
+</script>
+</body>
+</html>
